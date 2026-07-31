@@ -43,6 +43,7 @@ canvas{width:100%!important;height:100%!important;display:block}
 .vbtn:hover{border-color:var(--teal);color:var(--teal)}
 .vbtn.on{background:var(--teal);color:#0D1117;border-color:var(--teal)}
 .hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);pointer-events:none;white-space:nowrap}
+.loading-bar{position:absolute;bottom:0;left:0;height:2px;background:var(--teal);transition:width .3s;width:0}
 .info{background:var(--panel);border-left:1px solid var(--border);padding:10px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
 .stat-card{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px}
 .stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -61,6 +62,9 @@ canvas{width:100%!important;height:100%!important;display:block}
 .statusbar{background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden}
 .sc{display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;border-right:1px solid var(--border);font-family:var(--mono);font-size:10px;white-space:nowrap}
 .sc:last-child{border-right:none}.sl{color:var(--muted)}.sv{color:var(--teal)}.sv.a{color:var(--amber)}
+.btn-load{margin-top:6px;background:rgba(45,212,191,.15);color:var(--teal);border:1px solid var(--teal);border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;width:100%;font-family:var(--mono);transition:all .15s}
+.btn-load:hover{background:var(--teal);color:#0D1117}
+.btn-load:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -84,18 +88,21 @@ canvas{width:100%!important;height:100%!important;display:block}
             <div class="mrow"><span class="mk">CE90</span><span class="mv good">2.74 mm</span></div>
             <div class="mrow"><span class="mk">LE90</span><span class="mv warn">11.46 mm</span></div>
             <div class="mrow"><span class="mk">RMSE H</span><span class="mv good">1.81 mm</span></div>
+            <button class="btn-load" id="btn-sfmmvs" onclick="event.stopPropagation();loadSplat('sfmmvs')">⬇ Load Model Asli</button>
           </div>
           <div class="method-card" onclick="setMethod('3dgs',this)">
             <div class="mc-head"><span class="mc-name">3DGS Lokal</span><div class="mc-dot" style="background:#F97316"></div></div>
             <div class="mrow"><span class="mk">CE90</span><span class="mv err">17.70 mm</span></div>
             <div class="mrow"><span class="mk">LE90</span><span class="mv err">68.90 mm</span></div>
             <div class="mrow"><span class="mk">RMSE H</span><span class="mv warn">11.66 mm</span></div>
+            <button class="btn-load" id="btn-3dgs" onclick="event.stopPropagation();loadSplat('3dgs')">⬇ Load Model Asli</button>
           </div>
           <div class="method-card" onclick="setMethod('geo3dgs',this)">
             <div class="mc-head"><span class="mc-name">Geo-3DGS</span><div class="mc-dot" style="background:#818CF8"></div></div>
             <div class="mrow"><span class="mk">CE90</span><span class="mv warn">17.70 mm</span></div>
             <div class="mrow"><span class="mk">T-test</span><span class="mv good">Lulus 95%</span></div>
             <div class="mrow"><span class="mk">CRS</span><span class="mv info">UTM 49S</span></div>
+            <button class="btn-load" id="btn-geo3dgs" onclick="event.stopPropagation();loadSplat('geo3dgs')">⬇ Load Model Asli</button>
           </div>
         </div>
       </div>
@@ -127,11 +134,11 @@ canvas{width:100%!important;height:100%!important;display:block}
         <div class="mrow"><span class="mk">ICP</span><span class="mv">3</span></div>
       </div>
     </div>
-    <div class="canvas-wrap">
+    <div class="canvas-wrap" id="canvasWrap">
       <canvas id="mainCanvas"></canvas>
       <div class="hud">
-        <div class="hud-chip" id="hMethod">SfM-MVS · Dense Mesh</div>
-        <div class="hud-chip" id="hVerts">~30,000 titik</div>
+        <div class="hud-chip" id="hMethod">SfM-MVS · Demo</div>
+        <div class="hud-chip" id="hVerts">~30,000 titik (demo)</div>
         <div class="hud-chip" id="hFps">-- fps</div>
       </div>
       <div class="view-btns">
@@ -140,7 +147,8 @@ canvas{width:100%!important;height:100%!important;display:block}
         <div class="vbtn" onclick="doZoom(0.8)">+</div>
         <div class="vbtn" onclick="doZoom(1.2)">−</div>
       </div>
-      <div class="hint">Drag untuk orbit · Scroll untuk zoom</div>
+      <div class="hint" id="hint">Klik "Load Model Asli" untuk tampilkan data real · Drag orbit · Scroll zoom</div>
+      <div class="loading-bar" id="loadingBar"></div>
     </div>
     <div class="info">
       <div class="sec-label">Akurasi</div>
@@ -180,13 +188,23 @@ canvas{width:100%!important;height:100%!important;display:block}
 <script type="module">
 import * as THREE from 'three';
 
+// ── URL file splat di Hugging Face ─────────────────────────────────────────
+const HF_BASE = 'https://huggingface.co/datasets/giscgsplat/3dgs-geoviewer-models/resolve/main';
+const SPLAT_URLS = {
+  sfmmvs:  HF_BASE + '/splat_sfmmvs.ply',
+  '3dgs':  HF_BASE + '/splat_3dgs.ply',
+  geo3dgs: HF_BASE + '/splat_georefgs.ply',
+};
+
 const METHODS = {
   sfmmvs:{label:'SfM-MVS',desc:'Dense Mesh',ce90:'2.74',le90:'11.46',rmseH:'1.81',rmseV:'6.95',tval:'—',conc:'Metode referensi',pipe:'SfM → COLMAP → MVS Dense',colors:[0x2DD4BF,0x38BDF8,0x4ADE80]},
-  '3dgs':{label:'3DGS Lokal',desc:'KSplat/PLY',ce90:'17.70',le90:'68.90',rmseH:'11.66',rmseV:'41.76',tval:'—',conc:'Koordinat lokal — belum georeferensi',pipe:'SfM → Postshot 3DGS',colors:[0xF97316,0xFBBF24,0xF87171]},
+  '3dgs':{label:'3DGS Lokal',desc:'PLY Gaussian',ce90:'17.70',le90:'68.90',rmseH:'11.66',rmseV:'41.76',tval:'—',conc:'Koordinat lokal — belum georeferensi',pipe:'SfM → Postshot 3DGS',colors:[0xF97316,0xFBBF24,0xF87171]},
   geo3dgs:{label:'Geo-3DGS',desc:'UTM 49S',ce90:'17.70',le90:'68.90',rmseH:'11.66',rmseV:'41.76',tval:'-0.80',conc:'H₀ tidak ditolak — setara SfM-MVS α=0.05',pipe:'SfM-GS + XML Transform → UTM 49S',colors:[0x818CF8,0x38BDF8,0x2DD4BF]},
 };
 
 let autoRotate=true, theta=Math.PI/4, phi=Math.PI/5, radius=12;
+let currentMethod='sfmmvs', isLoading=false;
+
 const canvas=document.getElementById('mainCanvas');
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x0D1117);
@@ -211,9 +229,10 @@ scene.add(gcpGroup);scene.add(icpGroup);
   m.position.set(...p);icpGroup.add(m);
 });
 
+// ── Demo point cloud ───────────────────────────────────────────────────────
 let cloudObj=null;
-function buildCloud(method){
-  if(cloudObj){scene.remove(cloudObj);cloudObj.geometry.dispose();}
+function buildDemoCloud(method){
+  if(cloudObj){scene.remove(cloudObj);cloudObj.geometry?.dispose();cloudObj=null;}
   const d=METHODS[method],N=30000;
   const geo=new THREE.BufferGeometry();
   const pos=new Float32Array(N*3),col=new Float32Array(N*3);
@@ -229,9 +248,158 @@ function buildCloud(method){
   geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
   cloudObj=new THREE.Points(geo,new THREE.PointsMaterial({size:.035,vertexColors:true,sizeAttenuation:true}));
   scene.add(cloudObj);
+  document.getElementById('hVerts').textContent='~30,000 titik (demo)';
 }
-buildCloud('sfmmvs');
+buildDemoCloud('sfmmvs');
 
+// ── Load PLY asli dari Hugging Face ───────────────────────────────────────
+window.loadSplat = async function(method) {
+  if(isLoading) return;
+  isLoading = true;
+
+  const btn = document.getElementById('btn-'+method);
+  const bar = document.getElementById('loadingBar');
+  const hud = document.getElementById('hVerts');
+  btn.disabled = true;
+  btn.textContent = '⏳ Mengunduh...';
+  bar.style.width = '5%';
+
+  try {
+    const url = SPLAT_URLS[method];
+    hud.textContent = 'Mengunduh dari Hugging Face...';
+
+    const response = await fetch(url);
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+
+    const total = parseInt(response.headers.get('content-length') || '0');
+    const reader = response.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while(true) {
+      const {done, value} = await reader.read();
+      if(done) break;
+      chunks.push(value);
+      received += value.length;
+      if(total > 0) {
+        const pct = Math.round(received/total*80)+5;
+        bar.style.width = pct+'%';
+        hud.textContent = `Mengunduh... ${Math.round(received/1024/1024)} / ${Math.round(total/1024/1024)} MB`;
+      }
+    }
+
+    bar.style.width = '90%';
+    hud.textContent = 'Memproses PLY...';
+
+    // Gabungkan chunks jadi satu ArrayBuffer
+    const allChunks = new Uint8Array(received);
+    let pos = 0;
+    for(const chunk of chunks) { allChunks.set(chunk, pos); pos += chunk.length; }
+    const buffer = allChunks.buffer;
+
+    // Parse PLY dan buat point cloud
+    const points = parsePlyToPoints(buffer, method);
+    if(points) {
+      if(cloudObj){ scene.remove(cloudObj); cloudObj.geometry?.dispose(); }
+      cloudObj = points;
+      scene.add(cloudObj);
+      autoRotate = false;
+      document.getElementById('rotBtn').classList.remove('on');
+      fitCamera(cloudObj);
+    }
+
+    bar.style.width = '100%';
+    btn.textContent = '✓ Loaded';
+    btn.style.background = 'rgba(74,222,128,.2)';
+    btn.style.color = '#4ADE80';
+    btn.style.borderColor = '#4ADE80';
+    setTimeout(()=>bar.style.width='0',1000);
+
+  } catch(e) {
+    console.error(e);
+    hud.textContent = 'Gagal load: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '⬇ Coba Lagi';
+    bar.style.width = '0';
+  }
+  isLoading = false;
+};
+
+// ── Parser PLY sederhana → THREE.Points ───────────────────────────────────
+function parsePlyToPoints(buffer, method) {
+  const text = new TextDecoder().decode(buffer.slice(0, 2000));
+  const headerEnd = text.indexOf('end_header');
+  if(headerEnd === -1) { console.error('Bukan file PLY valid'); return null; }
+
+  const header = text.substring(0, headerEnd);
+  const lines = header.split('\n');
+
+  // Hitung jumlah vertex
+  let nVertex = 0;
+  const propOrder = [];
+  for(const line of lines) {
+    if(line.startsWith('element vertex')) nVertex = parseInt(line.split(' ')[2]);
+    if(line.startsWith('property float')) propOrder.push(line.split(' ')[2]);
+  }
+
+  const headerBytes = new TextEncoder().encode(text.substring(0, headerEnd + 'end_header'.length + 1)).length;
+  const stride = propOrder.length * 4;
+  const data = new DataView(buffer, headerBytes);
+
+  const MAX_POINTS = Math.min(nVertex, 1000000); // max 1 juta titik untuk performa
+  const positions = new Float32Array(MAX_POINTS * 3);
+  const colors    = new Float32Array(MAX_POINTS * 3);
+
+  const xi = propOrder.indexOf('x');
+  const yi = propOrder.indexOf('y');
+  const zi = propOrder.indexOf('z');
+  const ri = propOrder.indexOf('f_dc_0');
+  const gi = propOrder.indexOf('f_dc_1');
+  const bi = propOrder.indexOf('f_dc_2');
+
+  const SH = 0.28209479177387814;
+  const step = Math.max(1, Math.floor(nVertex / MAX_POINTS));
+
+  let pi = 0;
+  for(let i=0; i<nVertex && pi<MAX_POINTS; i+=step) {
+    const off = i * stride;
+    positions[pi*3]   = data.getFloat32(off + xi*4, true);
+    positions[pi*3+1] = data.getFloat32(off + yi*4, true);
+    positions[pi*3+2] = data.getFloat32(off + zi*4, true);
+
+    if(ri >= 0) {
+      colors[pi*3]   = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + ri*4, true)));
+      colors[pi*3+1] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + gi*4, true)));
+      colors[pi*3+2] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + bi*4, true)));
+    } else {
+      const d = METHODS[method];
+      const c = d.colors[pi % d.colors.length];
+      colors[pi*3]   = ((c>>16)&255)/255;
+      colors[pi*3+1] = ((c>>8)&255)/255;
+      colors[pi*3+2] = (c&255)/255;
+    }
+    pi++;
+  }
+
+  document.getElementById('hVerts').textContent = pi.toLocaleString() + ' titik (asli)';
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions.slice(0,pi*3), 3));
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors.slice(0,pi*3),    3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({size:.02, vertexColors:true, sizeAttenuation:true}));
+}
+
+function fitCamera(obj) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  radius = Math.max(size.x, size.y, size.z) * 1.5;
+  theta = Math.PI/4; phi = Math.PI/5;
+  updateCam();
+  camera.lookAt(center);
+}
+
+// ── Resize & Camera ────────────────────────────────────────────────────────
 function resize(){
   const w=canvas.parentElement.clientWidth,h=canvas.parentElement.clientHeight;
   renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
@@ -253,7 +421,7 @@ canvas.addEventListener('mousemove',e=>{
   theta-=(e.clientX-lastX)*.008;phi=Math.max(.1,Math.min(Math.PI/2.1,phi+(e.clientY-lastY)*.008));
   lastX=e.clientX;lastY=e.clientY;updateCam();
 });
-canvas.addEventListener('wheel',e=>{radius=Math.max(2,Math.min(50,radius+e.deltaY*.015));updateCam();e.preventDefault();},{passive:false});
+canvas.addEventListener('wheel',e=>{radius=Math.max(1,Math.min(200,radius+e.deltaY*.015));updateCam();e.preventDefault();},{passive:false});
 
 let fc=0,lastT=Date.now();
 (function loop(){
@@ -267,14 +435,16 @@ let fc=0,lastT=Date.now();
   document.getElementById('cN').textContent=(9045773.007+Math.cos(t)*.002).toFixed(3);
 })();
 
+// ── UI ─────────────────────────────────────────────────────────────────────
 const layers={cloud:true,grid:true,gcp:true,icp:true};
 
 window.setMethod=function(method,el){
+  currentMethod=method;
   document.querySelectorAll('.method-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const d=METHODS[method];
-  buildCloud(method);
-  document.getElementById('hMethod').textContent=d.label+' · '+d.desc;
+  buildDemoCloud(method);
+  document.getElementById('hMethod').textContent=d.label+' · '+d.desc+' (demo)';
   document.getElementById('sMode').textContent='SINGLE · '+d.label.toUpperCase();
   document.getElementById('sPipe').textContent=d.pipe;
   const ce90pct=method==='sfmmvs'?14:89,le90pct=method==='sfmmvs'?16:99;
@@ -307,7 +477,7 @@ window.toggleLayer=function(name,el){
 
 window.resetCam=()=>{theta=Math.PI/4;phi=Math.PI/5;radius=12;updateCam();};
 window.toggleRot=()=>{autoRotate=!autoRotate;document.getElementById('rotBtn').classList.toggle('on',autoRotate);};
-window.doZoom=f=>{radius=Math.max(2,Math.min(50,radius*f));updateCam();};
+window.doZoom=f=>{radius=Math.max(1,Math.min(200,radius*f));updateCam();};
 </script>
 </body>
 </html>
