@@ -188,12 +188,11 @@ canvas{width:100%!important;height:100%!important;display:block}
 <script type="module">
 import * as THREE from 'three';
 
-// ── URL file splat di Hugging Face ─────────────────────────────────────────
-const HF_BASE = 'https://huggingface.co/datasets/giscgsplat/3dgs-geoviewer-models/resolve/main';
+const GH_BASE = 'https://github.com/giscgsplat-success/3dgs-geoviewer/releases/download/v1.0';
 const SPLAT_URLS = {
-  sfmmvs:  HF_BASE + '/splat_sfmmvs.ply',
-  '3dgs':  HF_BASE + '/splat_3dgs.ply',
-  geo3dgs: HF_BASE + '/splat_georefgs.ply',
+  sfmmvs:  GH_BASE + '/splat_sfmmvs.ply',
+  '3dgs':  GH_BASE + '/splat_3dgs.ply',
+  geo3dgs: GH_BASE + '/splat_georefgs.ply',
 };
 
 const METHODS = {
