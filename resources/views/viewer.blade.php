@@ -393,10 +393,22 @@ function fitCamera(obj) {
   const box = new THREE.Box3().setFromObject(obj);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
-  radius = Math.max(size.x, size.y, size.z) * 1.5;
-  theta = Math.PI/4; phi = Math.PI/5;
+  const maxDim = Math.max(size.x, size.y, size.z);
+
+  // Pindahkan ke origin agar terlihat di tengah scene
+  obj.position.sub(center);
+
+  // Scale ke ukuran wajar jika koordinat UTM (ratusan ribu meter)
+  if (maxDim > 50) {
+    const scale = 10 / maxDim;
+    obj.scale.setScalar(scale);
+  }
+
+  radius = 15;
+  theta  = Math.PI / 4;
+  phi    = Math.PI / 5;
   updateCam();
-  camera.lookAt(center);
+  camera.lookAt(0, 0, 0);
 }
 
 // ── Resize & Camera ────────────────────────────────────────────────────────
