@@ -31,7 +31,7 @@ Route::get('/model/{filename}', function (string $filename) {
         'Access-Control-Allow-Origin' => '*',
         'Cache-Control'               => 'public, max-age=86400',
     ]);
-})->where('filename', '.+\.ply$');
+})->where('filename', '[a-zA-Z0-9_\-\.]+');
 
 });
 
