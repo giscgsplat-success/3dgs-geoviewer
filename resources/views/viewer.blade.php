@@ -188,11 +188,10 @@ canvas{width:100%!important;height:100%!important;display:block}
 <script type="module">
 import * as THREE from 'three';
 
-const GH_BASE = 'https://github.com/giscgsplat-success/3dgs-geoviewer/releases/download/v1.0';
 const SPLAT_URLS = {
-  sfmmvs:  GH_BASE + '/splat_sfmmvs.ply',
-  '3dgs':  GH_BASE + '/splat_3dgs.ply',
-  geo3dgs: GH_BASE + '/splat_georefgs.ply',
+  sfmmvs:  '/model/splat_sfmmvs.ply',
+  '3dgs':  '/model/splat_3dgs.ply',
+  geo3dgs: '/model/splat_georefgs.ply',
 };
 
 const METHODS = {
