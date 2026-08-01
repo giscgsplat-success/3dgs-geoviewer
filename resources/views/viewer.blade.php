@@ -514,25 +514,48 @@ function parsePlyToPoints(buffer, method) {
 }
 
 function fitCamera(obj) {
-  const box = new THREE.Box3().setFromObject(obj);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
+  // Hitung bounding box dari geometry langsung (bukan dari object transform)
+  const geo = obj.geometry;
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const cx = (bb.min.x + bb.max.x) / 2;
+  const cy = (bb.min.y + bb.max.y) / 2;
+  const cz = (bb.min.z + bb.max.z) / 2;
+  const sx = bb.max.x - bb.min.x;
+  const sy = bb.max.y - bb.min.y;
+  const sz = bb.max.z - bb.min.z;
+  const maxDim = Math.max(sx, sy, sz);
 
-  // Pindahkan ke origin agar terlihat di tengah scene
-  obj.position.sub(center);
+  console.log(`fitCamera: center=(${cx.toFixed(1)},${cy.toFixed(1)},${cz.toFixed(1)}) size=${maxDim.toFixed(1)}`);
 
-  // Scale ke ukuran wajar jika koordinat UTM (ratusan ribu meter)
-  if (maxDim > 50) {
+  // Geser semua vertex ke origin (0,0,0)
+  const posAttr = geo.attributes.position;
+  for (let i = 0; i < posAttr.count; i++) {
+    posAttr.setXYZ(
+      i,
+      posAttr.getX(i) - cx,
+      posAttr.getY(i) - cy,
+      posAttr.getZ(i) - cz,
+    );
+  }
+  posAttr.needsUpdate = true;
+  geo.computeBoundingBox();
+  geo.computeBoundingSphere();
+
+  // Scale ke ukuran scene yang wajar (target ~10 unit)
+  if (maxDim > 20) {
     const scale = 10 / maxDim;
     obj.scale.setScalar(scale);
+    console.log(`fitCamera: scale=${scale.toFixed(4)}`);
   }
 
+  // Reset kamera ke posisi standar menghadap origin
   radius = 15;
   theta  = Math.PI / 4;
   phi    = Math.PI / 5;
+  autoRotate = false;
+  document.getElementById('rotBtn').classList.remove('on');
   updateCam();
-  camera.lookAt(0, 0, 0);
 }
 
 // ── Resize & Camera ────────────────────────────────────────────────────────
