@@ -713,7 +713,11 @@ function initCesium() {
 
 // ── Basemap switcher ─────────────────────────────────────────────────────
 const BASEMAPS = {
-  osm: () => new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
+  osm: () => new Cesium.UrlTemplateImageryProvider({
+  url: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  credit: 'OpenStreetMap contributors',
+  maximumLevel: 19,
+}),
   satellite: () => new Cesium.UrlTemplateImageryProvider({
     url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
     credit: 'Google Satellite',
