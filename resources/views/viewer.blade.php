@@ -93,6 +93,9 @@ canvas{width:100%!important;height:100%!important;display:block}
 .cesium-viewer-animationContainer{display:none!important}
 .cesium-viewer-timelineContainer{display:none!important}
 .cesium-viewer-bottom{display:none!important}
+/* Cesium iframe panel */
+.cesium-iframe-wrap{position:relative;display:none;overflow:hidden;border-left:1px solid var(--border)}
+.cesium-iframe-wrap.visible{display:block}
 </style>
 <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css">
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
@@ -105,6 +108,7 @@ canvas{width:100%!important;height:100%!important;display:block}
       <div class="nav-tab-btn" onclick="setViewPanel('3d',this)">🧊 3D Viewer</div>
       <div class="nav-tab-btn" onclick="setViewPanel('split',this)">⊟ Split</div>
       <div class="nav-tab-btn active" onclick="setViewPanel('map',this)">🗺 Basemap</div>
+      <div class="nav-tab-btn" onclick="setViewPanel('cesium',this)">🌍 Cesium 3DGS</div>
     </div>
     <div class="nav-coords">
       <span>EPSG:<b id="coordEpsg">32748</b></span>
@@ -205,6 +209,20 @@ canvas{width:100%!important;height:100%!important;display:block}
         📍 Geosite Stone Garden, Citatah<br>
         <span style="color:var(--teal)">6.8244535°S, 107.4382284°E</span><br>
         <span style="color:var(--muted)">UTM 48S: 769483 E, 9244976 N</span>
+      </div>
+    </div>
+
+    <!-- CESIUM 3DGS PANEL -->
+    <div class="cesium-iframe-wrap" id="cesiumIframeWrap">
+      <iframe
+        id="cesiumIframe"
+        src="https://cesium-stone-garden-production.up.railway.app"
+        style="width:100%;height:100%;border:none;display:block"
+        allow="fullscreen"
+        title="Cesium 3DGS — Geosite Stone Garden">
+      </iframe>
+      <div style="position:absolute;top:10px;left:10px;background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--teal);pointer-events:none;z-index:10">
+        🌍 Cesium 3DGS · GeoRefGS · Geosite Stone Garden · UTM 48S
       </div>
     </div>
     <div class="info">
@@ -945,16 +963,21 @@ window.setViewPanel = function(mode, btn) {
   document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 
-  const mainEl    = document.querySelector('.main');
-  const canvasWrap = document.getElementById('canvasWrap');
-  const mapWrap   = document.getElementById('mapWrap');
-  const infoPanel = document.querySelector('.info');
+  const mainEl       = document.querySelector('.main');
+  const canvasWrap   = document.getElementById('canvasWrap');
+  const mapWrap      = document.getElementById('mapWrap');
+  const cesiumIframeWrap = document.getElementById('cesiumIframeWrap');
+  const infoPanel    = document.querySelector('.info');
+
+  // Reset semua panel dulu
+  canvasWrap.style.display = 'none';
+  mapWrap.classList.remove('visible');
+  cesiumIframeWrap.classList.remove('visible');
+  infoPanel.style.display = '';
 
   if (mode === '3d') {
     mainEl.className = 'main';
     canvasWrap.style.display = 'block';
-    mapWrap.classList.remove('visible');
-    infoPanel.style.display = '';
   } else if (mode === 'split') {
     mainEl.className = 'main split-mode';
     canvasWrap.style.display = 'block';
@@ -963,10 +986,11 @@ window.setViewPanel = function(mode, btn) {
     initCesium();
   } else if (mode === 'map') {
     mainEl.className = 'main map-only';
-    canvasWrap.style.display = 'none';
     mapWrap.classList.add('visible');
-    infoPanel.style.display = '';
     initCesium();
+  } else if (mode === 'cesium') {
+    mainEl.className = 'main map-only';
+    cesiumIframeWrap.classList.add('visible');
   }
 
   // Trigger resize Three.js
@@ -981,9 +1005,8 @@ window.setViewPanel = function(mode, btn) {
 };
 
 // ── Default landing page: Basemap ─────────────────────────────────────────
-// Langsung tampilkan basemap saat halaman pertama dibuka
 (function initDefaultView() {
-  const mapBtn = document.querySelector('.nav-tab-btn:last-child');
+  const mapBtn = document.querySelector('.nav-tab-btn:nth-child(3)');
   if (mapBtn) setViewPanel('map', mapBtn);
 })();
 </script>
