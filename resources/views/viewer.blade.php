@@ -16,7 +16,13 @@ nav{background:var(--panel);border-bottom:1px solid var(--border);display:flex;a
 .badge{background:rgba(45,212,191,.15);color:var(--teal);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono)}
 .nav-coords{margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
 .nav-coords b{color:var(--teal)}
+.nav-tab-btns{display:flex;gap:2px;margin-left:16px}
+.nav-tab-btn{padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer;color:var(--muted);border:1px solid transparent;transition:all .15s}
+.nav-tab-btn.active{background:rgba(45,212,191,.15);color:var(--teal);border-color:var(--teal)}
 .main{display:grid;grid-template-columns:200px 1fr 180px;overflow:hidden}
+/* Split mode: 3D viewer + basemap side by side */
+.main.split-mode{grid-template-columns:200px 1fr 1fr}
+.main.map-only{grid-template-columns:200px 1fr 180px}
 .sidebar{background:var(--panel);border-right:1px solid var(--border);padding:10px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
 .sec-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:4px}
 .method-card{border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all .15s}
@@ -34,8 +40,19 @@ nav{background:var(--panel);border-bottom:1px solid var(--border);display:flex;a
 .layer-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .layer-label{font-size:11px;color:var(--muted)}
 .layer-item.on .layer-label{color:#E2E8F0}
+/* Canvas & Map wrap */
 .canvas-wrap{position:relative;background:#0D1117}
+.map-wrap{position:relative;border-left:1px solid var(--border);display:none}
+.map-wrap.visible{display:block}
 canvas{width:100%!important;height:100%!important;display:block}
+#cesiumContainer{width:100%;height:100%}
+/* Map toolbar */
+.map-toolbar{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:4px;z-index:10}
+.map-tile-btn{background:rgba(13,17,23,.9);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.map-tile-btn.active{background:var(--teal);color:#0D1117;border-color:var(--teal)}
+.map-label{position:absolute;top:8px;right:8px;background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono);color:var(--teal);z-index:10}
+/* Footprint marker */
+.footprint-info{position:absolute;bottom:8px;left:8px;background:rgba(13,17,23,.9);border:1px solid var(--teal);border-radius:4px;padding:5px 8px;font-size:10px;font-family:var(--mono);color:var(--text);z-index:10}
 .hud{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
 .hud-chip{background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--mono);font-size:10px;color:var(--teal)}
 .view-btns{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px}
@@ -65,12 +82,25 @@ canvas{width:100%!important;height:100%!important;display:block}
 .btn-load{margin-top:6px;background:rgba(45,212,191,.15);color:var(--teal);border:1px solid var(--teal);border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;width:100%;font-family:var(--mono);transition:all .15s}
 .btn-load:hover{background:var(--teal);color:#0D1117}
 .btn-load:disabled{opacity:.4;cursor:not-allowed}
+/* Cesium overrides */
+.cesium-widget-credits{display:none!important}
+.cesium-viewer-toolbar{display:none!important}
+.cesium-viewer-animationContainer{display:none!important}
+.cesium-viewer-timelineContainer{display:none!important}
+.cesium-viewer-bottom{display:none!important}
 </style>
+<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css">
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
 </head>
 <body>
 <div class="app">
   <nav>
     <div class="brand"><div class="dot"></div>3DGS GeoViewer<span class="badge">v2.1</span></div>
+    <div class="nav-tab-btns">
+      <div class="nav-tab-btn active" onclick="setViewPanel('3d',this)">🧊 3D Viewer</div>
+      <div class="nav-tab-btn" onclick="setViewPanel('split',this)">⊟ Split</div>
+      <div class="nav-tab-btn" onclick="setViewPanel('map',this)">🗺 Basemap</div>
+    </div>
     <div class="nav-coords">
       <span>EPSG:<b>32749</b></span>
       <span>E:<b id="cE">856223.300</b></span>
@@ -149,6 +179,21 @@ canvas{width:100%!important;height:100%!important;display:block}
       </div>
       <div class="hint" id="hint">Klik "Load Model Asli" untuk tampilkan data real · Drag orbit · Scroll zoom</div>
       <div class="loading-bar" id="loadingBar"></div>
+    </div>
+
+    <!-- BASEMAP PANEL -->
+    <div class="map-wrap" id="mapWrap">
+      <div id="cesiumContainer"></div>
+      <div class="map-toolbar">
+        <div class="map-tile-btn active" id="btnOSM" onclick="setBasemap('osm',this)">🗺 OpenStreetMap</div>
+        <div class="map-tile-btn" id="btnSat" onclick="setBasemap('satellite',this)">🛰 Google Satellite</div>
+        <div class="map-tile-btn" id="btnTopo" onclick="setBasemap('topo',this)">⛰ Esri Topo</div>
+      </div>
+      <div class="map-label">EPSG:4326 · WGS84</div>
+      <div class="footprint-info">
+        📍 Tugu Temple, Semarang<br>
+        <span style="color:var(--teal)">-6.9804°, 110.3490°</span>
+      </div>
     </div>
     <div class="info">
       <div class="sec-label">Akurasi</div>
@@ -552,6 +597,181 @@ window.toggleLayer=function(name,el){
 window.resetCam=()=>{theta=Math.PI/4;phi=Math.PI/5;radius=12;updateCam();};
 window.toggleRot=()=>{autoRotate=!autoRotate;document.getElementById('rotBtn').classList.toggle('on',autoRotate);};
 window.doZoom=f=>{radius=Math.max(1,Math.min(200,radius*f));updateCam();};
+
+// ── CesiumJS Basemap ──────────────────────────────────────────────────────
+let cesiumViewer = null;
+let cesiumReady  = false;
+
+function initCesium() {
+  if (cesiumReady) return;
+  cesiumReady = true;
+
+  // Nonaktifkan token requirement — pakai imagery provider sendiri
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWUxNy1mMWZiLTQzYjYtYTQ0OS1kMWFjYmFkNjc4Y2EiLCJpZCI6NTc3MzMsImlhdCI6MTYyNzg0NTE4Mn0.XcKpgANiY19MC4bdFUXMVEBToBmqS8kuYpUlxJHYZxk';
+
+  cesiumViewer = new Cesium.Viewer('cesiumContainer', {
+    imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+      url: 'https://tile.openstreetmap.org/'
+    }),
+    baseLayerPicker:    false,
+    geocoder:           false,
+    homeButton:         false,
+    sceneModePicker:    false,
+    navigationHelpButton: false,
+    animation:          false,
+    timeline:           false,
+    fullscreenButton:   false,
+    infoBox:            false,
+    selectionIndicator: false,
+    terrainProvider:    new Cesium.EllipsoidTerrainProvider(),
+  });
+
+  // Fly to Tugu Temple, Semarang
+  const TUGU_LAT =  -6.9804;
+  const TUGU_LON = 110.3490;
+  const TUGU_H   =   37.995;
+
+  cesiumViewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(TUGU_LON, TUGU_LAT, 500),
+    orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },
+    duration: 2,
+  });
+
+  // Tambah marker Tugu Temple
+  cesiumViewer.entities.add({
+    name: 'Tugu Temple',
+    position: Cesium.Cartesian3.fromDegrees(TUGU_LON, TUGU_LAT, TUGU_H),
+    billboard: {
+      image: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <circle cx="16" cy="16" r="10" fill="#2DD4BF" opacity="0.9"/>
+          <circle cx="16" cy="16" r="5"  fill="#0D1117"/>
+          <circle cx="16" cy="16" r="2"  fill="#2DD4BF"/>
+        </svg>`),
+      width: 32, height: 32,
+      verticalOrigin: Cesium.VerticalOrigin.CENTER,
+    },
+    label: {
+      text: 'Tugu Temple\nSemarang',
+      font: '11px Space Grotesk',
+      fillColor: Cesium.Color.fromCssColorString('#2DD4BF'),
+      outlineColor: Cesium.Color.fromCssColorString('#0D1117'),
+      outlineWidth: 2,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+      pixelOffset: new Cesium.Cartesian2(0, -36),
+    },
+  });
+
+  // Tambah footprint polygon area survey
+  cesiumViewer.entities.add({
+    name: 'Survey Area',
+    polygon: {
+      hierarchy: Cesium.Cartesian3.fromDegreesArray([
+        110.3480, -6.9810,
+        110.3500, -6.9810,
+        110.3500, -6.9798,
+        110.3480, -6.9798,
+      ]),
+      material: Cesium.Color.fromCssColorString('#2DD4BF').withAlpha(0.15),
+      outline: true,
+      outlineColor: Cesium.Color.fromCssColorString('#2DD4BF'),
+      outlineWidth: 2,
+      height: 0,
+    },
+  });
+
+  // GCP markers
+  const gcps = [
+    { lon: 110.34820, lat: -6.98040, label: 'GCP-01' },
+    { lon: 110.34980, lat: -6.98040, label: 'GCP-02' },
+    { lon: 110.34980, lat: -6.98000, label: 'GCP-03' },
+    { lon: 110.34820, lat: -6.98000, label: 'GCP-04' },
+  ];
+  gcps.forEach(gcp => {
+    cesiumViewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(gcp.lon, gcp.lat, TUGU_H),
+      point: { pixelSize: 10, color: Cesium.Color.fromCssColorString('#F97316'), outlineColor: Cesium.Color.WHITE, outlineWidth: 1 },
+      label: { text: gcp.label, font: '10px monospace', fillColor: Cesium.Color.fromCssColorString('#F97316'), pixelOffset: new Cesium.Cartesian2(12, 0), scale: 0.8 },
+    });
+  });
+
+  // ICP markers
+  const icps = [
+    { lon: 110.34900, lat: -6.98010, label: 'ICP-01' },
+    { lon: 110.34840, lat: -6.98030, label: 'ICP-02' },
+    { lon: 110.34960, lat: -6.98030, label: 'ICP-03' },
+  ];
+  icps.forEach(icp => {
+    cesiumViewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(icp.lon, icp.lat, TUGU_H),
+      point: { pixelSize: 8, color: Cesium.Color.fromCssColorString('#F87171'), outlineColor: Cesium.Color.WHITE, outlineWidth: 1 },
+      label: { text: icp.label, font: '10px monospace', fillColor: Cesium.Color.fromCssColorString('#F87171'), pixelOffset: new Cesium.Cartesian2(12, 0), scale: 0.8 },
+    });
+  });
+}
+
+// ── Basemap switcher ─────────────────────────────────────────────────────
+const BASEMAPS = {
+  osm: () => new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
+  satellite: () => new Cesium.UrlTemplateImageryProvider({
+    url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    credit: 'Google Satellite',
+  }),
+  topo: () => new Cesium.UrlTemplateImageryProvider({
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    credit: 'Esri World Topo',
+  }),
+};
+
+window.setBasemap = function(name, btn) {
+  if (!cesiumViewer) return;
+  document.querySelectorAll('.map-tile-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const layers = cesiumViewer.imageryLayers;
+  layers.removeAll();
+  layers.addImageryProvider(BASEMAPS[name]());
+};
+
+// ── Panel switcher ────────────────────────────────────────────────────────
+window.setViewPanel = function(mode, btn) {
+  document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const mainEl   = document.querySelector('.main');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const mapWrap  = document.getElementById('mapWrap');
+  const infoPanel = document.querySelector('.info');
+
+  if (mode === '3d') {
+    mainEl.className = 'main';
+    canvasWrap.style.display = 'block';
+    mapWrap.classList.remove('visible');
+    infoPanel.style.display = '';
+  } else if (mode === 'split') {
+    mainEl.className = 'main split-mode';
+    canvasWrap.style.display = 'block';
+    mapWrap.classList.add('visible');
+    infoPanel.style.display = 'none';
+    initCesium();
+  } else if (mode === 'map') {
+    mainEl.className = 'main map-only';
+    canvasWrap.style.display = 'none';
+    mapWrap.classList.add('visible');
+    infoPanel.style.display = '';
+    initCesium();
+  }
+
+  // Trigger resize
+  setTimeout(() => {
+    const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+    if (w > 0 && h > 0) {
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+  }, 50);
+};
 </script>
 </body>
 </html>
