@@ -115,23 +115,23 @@ canvas{width:100%!important;height:100%!important;display:block}
         <div style="display:flex;flex-direction:column;gap:5px">
           <div class="method-card active" onclick="setMethod('sfmmvs',this)">
             <div class="mc-head"><span class="mc-name">SfM-MVS</span><div class="mc-dot" style="background:#4ADE80"></div></div>
-            <div class="mrow"><span class="mk">CE90</span><span class="mv good">2.74 mm</span></div>
-            <div class="mrow"><span class="mk">LE90</span><span class="mv warn">11.46 mm</span></div>
-            <div class="mrow"><span class="mk">RMSE H</span><span class="mv good">1.81 mm</span></div>
+            <div class="mrow"><span class="mk">RMSE XY</span><span class="mv good">2.54 cm</span></div>
+            <div class="mrow"><span class="mk">RMSE Z</span><span class="mv good">1.44 cm</span></div>
+            <div class="mrow"><span class="mk">Software</span><span class="mv" style="font-size:10px">Agisoft Metashape</span></div>
             <button class="btn-load" id="btn-sfmmvs" onclick="event.stopPropagation();loadSplat('sfmmvs')">⬇ Load Model Asli</button>
           </div>
           <div class="method-card" onclick="setMethod('3dgs',this)">
-            <div class="mc-head"><span class="mc-name">3DGS Lokal</span><div class="mc-dot" style="background:#F97316"></div></div>
-            <div class="mrow"><span class="mk">CE90</span><span class="mv err">17.70 mm</span></div>
-            <div class="mrow"><span class="mk">LE90</span><span class="mv err">68.90 mm</span></div>
-            <div class="mrow"><span class="mk">RMSE H</span><span class="mv warn">11.66 mm</span></div>
+            <div class="mc-head"><span class="mc-name">3DGS + Similarity</span><div class="mc-dot" style="background:#F97316"></div></div>
+            <div class="mrow"><span class="mk">CE90</span><span class="mv warn">2.64 cm</span></div>
+            <div class="mrow"><span class="mk">LE90</span><span class="mv warn">2.47 cm</span></div>
+            <div class="mrow"><span class="mk">RMSE 3D</span><span class="mv good">2.30 cm</span></div>
             <button class="btn-load" id="btn-3dgs" onclick="event.stopPropagation();loadSplat('3dgs')">⬇ Load Model Asli</button>
           </div>
           <div class="method-card" onclick="setMethod('geo3dgs',this)">
-            <div class="mc-head"><span class="mc-name">Geo-3DGS</span><div class="mc-dot" style="background:#818CF8"></div></div>
-            <div class="mrow"><span class="mk">CE90</span><span class="mv warn">17.70 mm</span></div>
-            <div class="mrow"><span class="mk">T-test</span><span class="mv good">Lulus 95%</span></div>
-            <div class="mrow"><span class="mk">CRS</span><span class="mv info">UTM 49S</span></div>
+            <div class="mc-head"><span class="mc-name">GeoRefGS</span><div class="mc-dot" style="background:#818CF8"></div></div>
+            <div class="mrow"><span class="mk">CE90</span><span class="mv err">25.53 cm</span></div>
+            <div class="mrow"><span class="mk">LE90</span><span class="mv good">2.47 cm</span></div>
+            <div class="mrow"><span class="mk">RMSE 3D</span><span class="mv warn">16.89 cm</span></div>
             <button class="btn-load" id="btn-geo3dgs" onclick="event.stopPropagation();loadSplat('geo3dgs')">⬇ Load Model Asli</button>
           </div>
         </div>
@@ -158,10 +158,10 @@ canvas{width:100%!important;height:100%!important;display:block}
       <div>
         <div class="sec-label">Info Lokasi</div>
         <div class="mrow"><span class="mk">Objek</span><span class="mv" id="infoObjek" style="font-size:10px">Geosite Stone Garden</span></div>
-        <div class="mrow"><span class="mk">Kota</span><span class="mv" id="infoKota" style="font-size:10px">Semarang</span></div>
+        <div class="mrow"><span class="mk">Kota</span><span class="mv" id="infoKota" style="font-size:10px">Citatah, Kab. Bandung Barat</span></div>
         <div class="mrow"><span class="mk">Metode</span><span class="mv" id="infoMetode" style="font-size:10px">SfM-MVS</span></div>
         <div class="mrow"><span class="mk">Software</span><span class="mv" id="infoSoftware" style="font-size:10px">Agisoft Metashape</span></div>
-        <div class="mrow"><span class="mk">Kamera</span><span class="mv" id="infoKamera" style="font-size:10px">DJI Phantom 4</span></div>
+        <div class="mrow"><span class="mk">Kamera</span><span class="mv" id="infoKamera" style="font-size:10px">DJI Mavic 3 Enterprise</span></div>
         <div class="mrow"><span class="mk">GCP</span><span class="mv" id="infoGcp">4</span></div>
         <div class="mrow"><span class="mk">ICP</span><span class="mv" id="infoIcp">3</span></div>
         <div class="mrow"><span class="mk">CRS</span><span class="mv" id="infoCrs" style="font-size:10px">Lokal</span></div>
@@ -228,7 +228,7 @@ canvas{width:100%!important;height:100%!important;display:block}
     <div class="sc"><span class="sl">METODE</span><span class="sv" id="sMode">SINGLE · SfM-MVS</span></div>
     <div class="sc"><span class="sl">PIPELINE</span><span class="sv a" id="sPipe">SfM → COLMAP → MVS</span></div>
     <div class="sc"><span class="sl">RENDER</span><span class="sv">WebGL2 · Three.js r169</span></div>
-    <div class="sc"><span class="sl">REF</span><span class="sv">Dzulvikar et al. 2025 · GeoRefGS 2026</span></div>
+    <div class="sc"><span class="sl">REF</span><span class="sv">Kerbl et al. 2023 · Hou et al. 2026 (GeoRefGS)</span></div>
   </div>
 </div>
 
@@ -338,6 +338,7 @@ scene.add(gcpGroup);scene.add(icpGroup);
 
 // ── Demo point cloud ───────────────────────────────────────────────────────
 let cloudObj=null;
+let realModelLoaded={};
 
 // Debug helper — ketik _dbg() di console setelah model load
 window._dbg = () => {
