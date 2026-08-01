@@ -102,10 +102,10 @@ canvas{width:100%!important;height:100%!important;display:block}
       <div class="nav-tab-btn" onclick="setViewPanel('map',this)">🗺 Basemap</div>
     </div>
     <div class="nav-coords">
-      <span>EPSG:<b>32749</b></span>
-      <span>E:<b id="cE">856223.300</b></span>
-      <span>N:<b id="cN">9045773.007</b></span>
-      <span>Z:<b id="cZ">37.995</b></span>
+      <span>EPSG:<b id="coordEpsg">Lokal</b></span>
+      <span>X:<b id="cE">—</b></span>
+      <span>Y:<b id="cN">—</b></span>
+      <span>Z:<b id="cZ">—</b></span>
     </div>
   </nav>
   <div class="main">
@@ -157,11 +157,15 @@ canvas{width:100%!important;height:100%!important;display:block}
       </div>
       <div>
         <div class="sec-label">Info Lokasi</div>
-        <div class="mrow"><span class="mk">Objek</span><span class="mv" style="font-size:10px">Tugu Temple</span></div>
-        <div class="mrow"><span class="mk">Kota</span><span class="mv" style="font-size:10px">Semarang</span></div>
-        <div class="mrow"><span class="mk">Kamera</span><span class="mv" style="font-size:10px">DJI Ph4</span></div>
-        <div class="mrow"><span class="mk">GCP</span><span class="mv">4</span></div>
-        <div class="mrow"><span class="mk">ICP</span><span class="mv">3</span></div>
+        <div class="mrow"><span class="mk">Objek</span><span class="mv" id="infoObjek" style="font-size:10px">Tugu Muda</span></div>
+        <div class="mrow"><span class="mk">Kota</span><span class="mv" id="infoKota" style="font-size:10px">Semarang</span></div>
+        <div class="mrow"><span class="mk">Metode</span><span class="mv" id="infoMetode" style="font-size:10px">SfM-MVS</span></div>
+        <div class="mrow"><span class="mk">Software</span><span class="mv" id="infoSoftware" style="font-size:10px">Agisoft Metashape</span></div>
+        <div class="mrow"><span class="mk">Kamera</span><span class="mv" id="infoKamera" style="font-size:10px">DJI Phantom 4</span></div>
+        <div class="mrow"><span class="mk">GCP</span><span class="mv" id="infoGcp">4</span></div>
+        <div class="mrow"><span class="mk">ICP</span><span class="mv" id="infoIcp">3</span></div>
+        <div class="mrow"><span class="mk">CRS</span><span class="mv" id="infoCrs" style="font-size:10px">Lokal</span></div>
+        <div class="mrow"><span class="mk">Format</span><span class="mv" id="infoFormat" style="font-size:10px">PLY (mesh)</span></div>
       </div>
     </div>
     <div class="canvas-wrap" id="canvasWrap">
@@ -212,12 +216,11 @@ canvas{width:100%!important;height:100%!important;display:block}
         <div class="cell"><div class="cell-label">RMSE H</div><div class="cell-val good" id="rmseH">1.81mm</div></div>
         <div class="cell"><div class="cell-label">RMSE V</div><div class="cell-val warn" id="rmseV">6.95mm</div></div>
       </div>
-      <div class="sec-label">T-Test (α=0.05)</div>
-      <div class="ttest">
-        <div class="trow"><span>t-value</span><b id="tval">—</b></div>
-        <div class="trow"><span>t-kritis</span><b>±2.101</b></div>
-        <div class="trow"><span>df</span><b>18</b></div>
-        <div class="tconc" id="tconc">Metode referensi</div>
+      <div class="sec-label">Jumlah Titik</div>
+      <div class="stat-card">
+        <div class="stat-label">Point Cloud</div>
+        <div class="stat-val" id="pointCount" style="font-size:16px;color:var(--teal)">—</div>
+        <div class="stat-unit" id="pointNote">Load model asli untuk lihat data nyata</div>
       </div>
     </div>
   </div>
@@ -242,9 +245,51 @@ const SPLAT_URLS = {
 };
 
 const METHODS = {
-  sfmmvs:{label:'SfM-MVS',desc:'Dense Mesh',ce90:'2.74',le90:'11.46',rmseH:'1.81',rmseV:'6.95',tval:'—',conc:'Metode referensi',pipe:'SfM → COLMAP → MVS Dense',colors:[0x2DD4BF,0x38BDF8,0x4ADE80]},
-  '3dgs':{label:'3DGS Lokal',desc:'PLY Gaussian',ce90:'17.70',le90:'68.90',rmseH:'11.66',rmseV:'41.76',tval:'—',conc:'Koordinat lokal — belum georeferensi',pipe:'SfM → Postshot 3DGS',colors:[0xF97316,0xFBBF24,0xF87171]},
-  geo3dgs:{label:'Geo-3DGS',desc:'UTM 49S',ce90:'17.70',le90:'68.90',rmseH:'11.66',rmseV:'41.76',tval:'-0.80',conc:'H₀ tidak ditolak — setara SfM-MVS α=0.05',pipe:'SfM-GS + XML Transform → UTM 49S',colors:[0x818CF8,0x38BDF8,0x2DD4BF]},
+  sfmmvs:{
+    label:'SfM-MVS', desc:'Dense Mesh',
+    ce90:'2.74', le90:'11.46', rmseH:'1.81', rmseV:'6.95',
+    pipe:'SfM → COLMAP → Agisoft Metashape MVS',
+    colors:[0x2DD4BF,0x38BDF8,0x4ADE80],
+    info:{
+      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
+      metode:'SfM-MVS (Structure from Motion)', software:'Agisoft Metashape Pro',
+      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
+      icp:'3 titik (Sokkia IM-52)', crs:'Lokal (Metashape)',
+      format:'PLY Binary (Dense Mesh)', titik:'6,534,772',
+    },
+    ce90color:'#4ADE80', le90color:'#F97316', ce90pct:14, le90pct:16,
+    epsg:'Lokal', coordPrefix:['X','Y','Z'],
+  },
+  '3dgs':{
+    label:'3DGS Lokal', desc:'Gaussian Splatting',
+    ce90:'17.70', le90:'68.90', rmseH:'11.66', rmseV:'41.76',
+    pipe:'SfM → COLMAP → Postshot 3DGS Training',
+    colors:[0xF97316,0xFBBF24,0xF87171],
+    info:{
+      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
+      metode:'3D Gaussian Splatting', software:'Jawset Postshot',
+      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
+      icp:'3 titik (Sokkia IM-52)', crs:'Koordinat Lokal',
+      format:'PLY Binary (Gaussian Splat)', titik:'3,285,986',
+    },
+    ce90color:'#F87171', le90color:'#F87171', ce90pct:89, le90pct:99,
+    epsg:'Lokal', coordPrefix:['X','Y','Z'],
+  },
+  geo3dgs:{
+    label:'Geo-3DGS', desc:'Georeferenced UTM 49S',
+    ce90:'17.70', le90:'68.90', rmseH:'11.66', rmseV:'41.76',
+    pipe:'GeoRefGS Training → Similarity Transform T → UTM 49S',
+    colors:[0x818CF8,0x38BDF8,0x2DD4BF],
+    info:{
+      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
+      metode:'Georeferenced 3DGS (GeoRefGS)', software:'GeoRefGS + Postshot',
+      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
+      icp:'3 titik (Sokkia IM-52)', crs:'WGS84 / UTM Zone 49S (EPSG:32749)',
+      format:'PLY Binary (Georef Gaussian Splat)', titik:'2,063,667',
+    },
+    ce90color:'#F97316', le90color:'#F87171', ce90pct:89, le90pct:99,
+    epsg:'EPSG:32749', coordPrefix:['E','N','H'],
+  },
 };
 
 let autoRotate=true, theta=Math.PI/4, phi=Math.PI/5, radius=12;
@@ -368,6 +413,25 @@ window.loadSplat = async function(method) {
       autoRotate = false;
       document.getElementById('rotBtn').classList.remove('on');
       fitCamera(cloudObj);
+
+      // Tandai model sudah loaded
+      realModelLoaded[method] = true;
+
+      // Update info adaptif
+      const d = METHODS[method];
+      const ptCount = cloudObj.geometry.attributes.position.count;
+      document.getElementById('hMethod').textContent = d.label + ' · ' + d.desc;
+      document.getElementById('pointCount').textContent = ptCount.toLocaleString();
+      document.getElementById('pointNote').textContent = 'titik asli dari rekonstruksi';
+
+      // Fly basemap ke lokasi
+      if (cesiumViewer) {
+        cesiumViewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(110.3490, -6.9804, 400),
+          orientation: { heading:0, pitch: Cesium.Math.toRadians(-50), roll:0 },
+          duration: 1.5,
+        });
+      }
     }
 
     bar.style.width = '100%';
@@ -574,11 +638,33 @@ updateCam();
 let isDrag=false,lastX=0,lastY=0;
 canvas.addEventListener('mousedown',e=>{isDrag=true;lastX=e.clientX;lastY=e.clientY;});
 canvas.addEventListener('mouseup',()=>isDrag=false);
-canvas.addEventListener('mouseleave',()=>isDrag=false);
+canvas.addEventListener('mouseleave',()=>{
+  isDrag=false;
+  document.getElementById('cE').textContent='—';
+  document.getElementById('cN').textContent='—';
+  document.getElementById('cZ').textContent='—';
+});
 canvas.addEventListener('mousemove',e=>{
-  if(!isDrag)return;
-  theta-=(e.clientX-lastX)*.008;phi=Math.max(.1,Math.min(Math.PI/2.1,phi+(e.clientY-lastY)*.008));
-  lastX=e.clientX;lastY=e.clientY;updateCam();
+  if(isDrag){
+    theta-=(e.clientX-lastX)*.008;phi=Math.max(.1,Math.min(Math.PI/2.1,phi+(e.clientY-lastY)*.008));
+    lastX=e.clientX;lastY=e.clientY;updateCam();
+  }
+  // Koordinat realtime via raycasting ke ground plane
+  const rect=canvas.getBoundingClientRect();
+  const mx=((e.clientX-rect.left)/rect.width)*2-1;
+  const my=-((e.clientY-rect.top)/rect.height)*2+1;
+  const raycaster=new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(mx,my),camera);
+  const ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  const pt=new THREE.Vector3();
+  raycaster.ray.intersectPlane(ground,pt);
+  if(pt){
+    const d=METHODS[currentMethod];
+    const prefix=d.coordPrefix;
+    document.getElementById('cE').textContent=pt.x.toFixed(3);
+    document.getElementById('cN').textContent=pt.z.toFixed(3);
+    document.getElementById('cZ').textContent=pt.y.toFixed(3);
+  }
 });
 canvas.addEventListener('wheel',e=>{radius=Math.max(1,Math.min(200,radius+e.deltaY*.015));updateCam();e.preventDefault();},{passive:false});
 
@@ -589,9 +675,6 @@ let fc=0,lastT=Date.now();
   renderer.render(scene,camera);
   fc++;const now=Date.now();
   if(now-lastT>800){document.getElementById('hFps').textContent=Math.round(fc*1000/(now-lastT))+' fps';fc=0;lastT=now;}
-  const t=Date.now()*.00008;
-  document.getElementById('cE').textContent=(856223.300+Math.sin(t)*.002).toFixed(3);
-  document.getElementById('cN').textContent=(9045773.007+Math.cos(t)*.002).toFixed(3);
 })();
 
 // ── UI ─────────────────────────────────────────────────────────────────────
@@ -602,25 +685,51 @@ window.setMethod=function(method,el){
   document.querySelectorAll('.method-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const d=METHODS[method];
-  buildDemoCloud(method);
-  document.getElementById('hMethod').textContent=d.label+' · '+d.desc+' (demo)';
+
+  if (!realModelLoaded[method]) buildDemoCloud(method);
+  document.getElementById('hMethod').textContent=d.label+' · '+d.desc+(realModelLoaded[method]?'':' (demo)');
   document.getElementById('sMode').textContent='SINGLE · '+d.label.toUpperCase();
   document.getElementById('sPipe').textContent=d.pipe;
-  const ce90pct=method==='sfmmvs'?14:89,le90pct=method==='sfmmvs'?16:99;
-  const cc=method==='sfmmvs'?'#4ADE80':method==='geo3dgs'?'#F97316':'#F87171';
-  const lc=method==='sfmmvs'?'#F97316':'#F87171';
+
+  // Akurasi
   document.getElementById('ce90val').innerHTML=d.ce90+' <span class="stat-unit">mm</span>';
-  document.getElementById('ce90val').style.color=cc;
-  document.getElementById('ce90bar').style.cssText='width:'+ce90pct+'%;background:'+cc;
+  document.getElementById('ce90val').style.color=d.ce90color;
+  document.getElementById('ce90bar').style.cssText='width:'+d.ce90pct+'%;background:'+d.ce90color;
   document.getElementById('le90val').innerHTML=d.le90+' <span class="stat-unit">mm</span>';
-  document.getElementById('le90val').style.color=lc;
-  document.getElementById('le90bar').style.cssText='width:'+le90pct+'%;background:'+lc;
+  document.getElementById('le90val').style.color=d.le90color;
+  document.getElementById('le90bar').style.cssText='width:'+d.le90pct+'%;background:'+d.le90color;
   document.getElementById('rmseH').textContent=d.rmseH+'mm';
   document.getElementById('rmseH').className='cell-val '+(method==='sfmmvs'?'good':'warn');
   document.getElementById('rmseV').textContent=d.rmseV+'mm';
   document.getElementById('rmseV').className='cell-val '+(method==='sfmmvs'?'warn':'err');
-  document.getElementById('tval').textContent=d.tval;
-  document.getElementById('tconc').textContent=d.conc;
+
+  // Jumlah titik
+  document.getElementById('pointCount').textContent=realModelLoaded[method]?d.info.titik:'—';
+  document.getElementById('pointNote').textContent=realModelLoaded[method]?'titik asli dari rekonstruksi':'Load model asli untuk lihat data nyata';
+
+  // Info Lokasi adaptif
+  const info=d.info;
+  document.getElementById('infoObjek').textContent=info.objek;
+  document.getElementById('infoKota').textContent=info.kota;
+  document.getElementById('infoMetode').textContent=info.metode;
+  document.getElementById('infoSoftware').textContent=info.software;
+  document.getElementById('infoKamera').textContent=info.kamera;
+  document.getElementById('infoGcp').textContent=info.gcp;
+  document.getElementById('infoIcp').textContent=info.icp;
+  document.getElementById('infoCrs').textContent=info.crs;
+  document.getElementById('infoFormat').textContent=info.format;
+
+  // Koordinat navbar label
+  document.getElementById('coordEpsg').textContent=d.epsg;
+
+  // Fly basemap ke lokasi model
+  if (cesiumViewer) {
+    cesiumViewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(110.3490, -6.9804, 400),
+      orientation: { heading:0, pitch: Cesium.Math.toRadians(-50), roll:0 },
+      duration: 1.5,
+    });
+  }
 };
 
 window.toggleLayer=function(name,el){
