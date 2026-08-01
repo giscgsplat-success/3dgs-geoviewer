@@ -276,6 +276,17 @@ scene.add(gcpGroup);scene.add(icpGroup);
 
 // ── Demo point cloud ───────────────────────────────────────────────────────
 let cloudObj=null;
+window._dbg = () => {
+  if(!cloudObj?.geometry) { console.log('cloudObj null'); return; }
+  cloudObj.geometry.computeBoundingBox();
+  const bb = cloudObj.geometry.boundingBox;
+  const pos = cloudObj.geometry.attributes.position;
+  console.log('BB min:', bb.min);
+  console.log('BB max:', bb.max);
+  console.log('Points:', pos.count);
+  // Sample 5 posisi pertama
+  for(let i=0;i<5;i++) console.log(`pt[${i}]:`, pos.getX(i).toFixed(4), pos.getY(i).toFixed(4), pos.getZ(i).toFixed(4));
+};
 function buildDemoCloud(method){
   if(cloudObj){scene.remove(cloudObj);cloudObj.geometry?.dispose();cloudObj=null;}
   const d=METHODS[method],N=30000;
