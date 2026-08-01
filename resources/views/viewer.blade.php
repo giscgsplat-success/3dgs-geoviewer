@@ -555,9 +555,15 @@ function parsePlyToPoints(buffer, method) {
       const off = i * stride;
       if (off + stride > data.byteLength) break;
 
-      positions[pi*3]   = data.getFloat32(off + xi*4, true);
-      positions[pi*3+1] = data.getFloat32(off + yi*4, true);
-      positions[pi*3+2] = data.getFloat32(off + zi*4, true);
+      const px = data.getFloat32(off + xi*4, true);
+      const py = data.getFloat32(off + yi*4, true);
+      const pz = data.getFloat32(off + zi*4, true);
+      // 3DGS/COLMAP: X=kanan, Y=bawah, Z=depan
+      // Three.js: X=kanan, Y=atas, Z=belakang
+      // Konversi: three_x=x, three_y=-z, three_z=y
+      positions[pi*3]   = px;
+      positions[pi*3+1] = -pz;
+      positions[pi*3+2] = py;
 
       if (ri >= 0) {
         colors[pi*3]   = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + ri*4, true)));
