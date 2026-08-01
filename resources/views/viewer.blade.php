@@ -81,6 +81,12 @@ canvas{width:100%!important;height:100%!important;display:block}
 .btn-load{margin-top:6px;background:rgba(45,212,191,.15);color:var(--teal);border:1px solid var(--teal);border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;width:100%;font-family:var(--mono);transition:all .15s}
 .btn-load:hover{background:var(--teal);color:#0D1117}
 .btn-load:disabled{opacity:.4;cursor:not-allowed}
+/* Info Lokasi table */
+.info-table{display:flex;flex-direction:column;gap:3px}
+.info-row{display:flex;flex-direction:column;gap:1px;padding:3px 0;border-bottom:1px solid rgba(30,58,95,.4)}
+.info-row:last-child{border-bottom:none}
+.info-k{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.info-v{font-size:11px;color:#E2E8F0;word-break:break-word;line-height:1.3}
 /* Cesium overrides */
 .cesium-widget-credits{display:none!important}
 .cesium-viewer-toolbar{display:none!important}
@@ -101,10 +107,10 @@ canvas{width:100%!important;height:100%!important;display:block}
       <div class="nav-tab-btn active" onclick="setViewPanel('map',this)">🗺 Basemap</div>
     </div>
     <div class="nav-coords">
-      <span>EPSG:<b id="coordEpsg">Lokal</b></span>
-      <span>X:<b id="cE">—</b></span>
-      <span>Y:<b id="cN">—</b></span>
-      <span>Z:<b id="cZ">—</b></span>
+      <span>EPSG:<b id="coordEpsg">32748</b></span>
+      <span id="coordLabelE">E:<b id="cE">—</b></span>
+      <span id="coordLabelN">N:<b id="cN">—</b></span>
+      <span id="coordLabelZ">H:<b id="cZ">—</b></span>
     </div>
   </nav>
   <div class="main">
@@ -156,15 +162,17 @@ canvas{width:100%!important;height:100%!important;display:block}
       </div>
       <div>
         <div class="sec-label">Info Lokasi</div>
-        <div class="mrow"><span class="mk">Objek</span><span class="mv" id="infoObjek" style="font-size:10px">Geosite Stone Garden</span></div>
-        <div class="mrow"><span class="mk">Kota</span><span class="mv" id="infoKota" style="font-size:10px">Citatah, Kab. Bandung Barat</span></div>
-        <div class="mrow"><span class="mk">Metode</span><span class="mv" id="infoMetode" style="font-size:10px">SfM-MVS</span></div>
-        <div class="mrow"><span class="mk">Software</span><span class="mv" id="infoSoftware" style="font-size:10px">Agisoft Metashape</span></div>
-        <div class="mrow"><span class="mk">Kamera</span><span class="mv" id="infoKamera" style="font-size:10px">DJI Mavic 3 Enterprise</span></div>
-        <div class="mrow"><span class="mk">GCP</span><span class="mv" id="infoGcp">4</span></div>
-        <div class="mrow"><span class="mk">ICP</span><span class="mv" id="infoIcp">3</span></div>
-        <div class="mrow"><span class="mk">CRS</span><span class="mv" id="infoCrs" style="font-size:10px">Lokal</span></div>
-        <div class="mrow"><span class="mk">Format</span><span class="mv" id="infoFormat" style="font-size:10px">PLY (mesh)</span></div>
+        <div class="info-table">
+          <div class="info-row"><span class="info-k">Objek</span><span class="info-v" id="infoObjek">Geosite Stone Garden</span></div>
+          <div class="info-row"><span class="info-k">Kota</span><span class="info-v" id="infoKota">Citatah, Kab. Bandung Barat</span></div>
+          <div class="info-row"><span class="info-k">Metode</span><span class="info-v" id="infoMetode">SfM-MVS</span></div>
+          <div class="info-row"><span class="info-k">Software</span><span class="info-v" id="infoSoftware">Agisoft Metashape</span></div>
+          <div class="info-row"><span class="info-k">Kamera</span><span class="info-v" id="infoKamera">DJI Mavic 3 Enterprise</span></div>
+          <div class="info-row"><span class="info-k">GCP</span><span class="info-v" id="infoGcp">5 titik (Sokkia iM-52)</span></div>
+          <div class="info-row"><span class="info-k">ICP</span><span class="info-v" id="infoIcp">3 titik (CP02, G1CP01, G2CP02)</span></div>
+          <div class="info-row"><span class="info-k">CRS</span><span class="info-v" id="infoCrs">Lokal</span></div>
+          <div class="info-row"><span class="info-k">Format</span><span class="info-v" id="infoFormat">PLY Binary (mesh)</span></div>
+        </div>
       </div>
     </div>
     <div class="canvas-wrap" id="canvasWrap">
@@ -558,12 +566,11 @@ function parsePlyToPoints(buffer, method) {
       const px = data.getFloat32(off + xi*4, true);
       const py = data.getFloat32(off + yi*4, true);
       const pz = data.getFloat32(off + zi*4, true);
-      // 3DGS/COLMAP: X=kanan, Y=bawah, Z=depan
-      // Three.js: X=kanan, Y=atas, Z=belakang
-      // Konversi: three_x=x, three_y=-z, three_z=y
+      // 3DGS/COLMAP → Three.js axis conversion
+      // three_x=x, three_y=z, three_z=-y (flip Z, negate Y)
       positions[pi*3]   = px;
-      positions[pi*3+1] = -pz;
-      positions[pi*3+2] = py;
+      positions[pi*3+1] = pz;
+      positions[pi*3+2] = -py;
 
       if (ri >= 0) {
         colors[pi*3]   = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + ri*4, true)));
@@ -683,11 +690,37 @@ canvas.addEventListener('mousemove',e=>{
   const pt=new THREE.Vector3();
   raycaster.ray.intersectPlane(ground,pt);
   if(pt){
-    const d=METHODS[currentMethod];
-    const prefix=d.coordPrefix;
-    document.getElementById('cE').textContent=pt.x.toFixed(3);
-    document.getElementById('cN').textContent=pt.z.toFixed(3);
-    document.getElementById('cZ').textContent=pt.y.toFixed(3);
+    const d = METHODS[currentMethod];
+    if(currentMethod === 'geo3dgs') {
+      // Konversi koordinat lokal scene → UTM 48S menggunakan transform
+      // s=0.99976, t=[982.10, 2177.39, -1919.80]
+      const s = 0.99976;
+      const tx = 982.1024, ty = 2177.3876, tz = -1919.7956;
+      // pt dalam scene sudah di-scale, balik ke koordinat PLY dulu
+      const scaleInv = cloudObj ? (1/cloudObj.scale.x) : 1;
+      const lx = pt.x * scaleInv;
+      const ly = -pt.z * scaleInv; // swap balik Y/Z
+      const lz = pt.y * scaleInv;
+      const utmE = s * lx + tx;
+      const utmN = s * ly + ty;
+      const utmH = s * lz + tz;
+      document.getElementById('cE').textContent = utmE.toFixed(2);
+      document.getElementById('cN').textContent = utmN.toFixed(2);
+      document.getElementById('cZ').textContent = utmH.toFixed(2);
+      document.getElementById('coordEpsg').textContent = '32748';
+      document.getElementById('coordLabelE').firstChild.textContent = 'E:';
+      document.getElementById('coordLabelN').firstChild.textContent = 'N:';
+      document.getElementById('coordLabelZ').firstChild.textContent = 'H:';
+    } else {
+      // Tampilkan koordinat lokal scene
+      document.getElementById('cE').textContent = pt.x.toFixed(3);
+      document.getElementById('cN').textContent = pt.z.toFixed(3);
+      document.getElementById('cZ').textContent = pt.y.toFixed(3);
+      document.getElementById('coordEpsg').textContent = 'Lokal';
+      document.getElementById('coordLabelE').firstChild.textContent = 'X:';
+      document.getElementById('coordLabelN').firstChild.textContent = 'Y:';
+      document.getElementById('coordLabelZ').firstChild.textContent = 'Z:';
+    }
   }
 });
 canvas.addEventListener('wheel',e=>{radius=Math.max(1,Math.min(200,radius+e.deltaY*.015));updateCam();e.preventDefault();},{passive:false});
