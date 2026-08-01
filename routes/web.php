@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('viewer');
+});
 
 // Proxy untuk stream file PLY dari GitHub Releases
 Route::get('/model/{filename}', function (string $filename) {
@@ -32,6 +33,3 @@ Route::get('/model/{filename}', function (string $filename) {
         'Cache-Control'               => 'public, max-age=86400',
     ]);
 })->where('filename', '[a-zA-Z0-9_\-\.]+');
-
-});
-
