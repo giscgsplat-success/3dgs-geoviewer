@@ -42,17 +42,16 @@ nav{background:var(--panel);border-bottom:1px solid var(--border);display:flex;a
 .layer-item.on .layer-label{color:#E2E8F0}
 /* Canvas & Map wrap */
 .canvas-wrap{position:relative;background:#0D1117}
-.map-wrap{position:relative;border-left:1px solid var(--border);display:none}
+.map-wrap{position:relative;border-left:1px solid var(--border);display:none;overflow:hidden}
 .map-wrap.visible{display:block}
 canvas{width:100%!important;height:100%!important;display:block}
-#cesiumContainer{width:100%;height:100%}
-/* Map toolbar */
-.map-toolbar{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:4px;z-index:10}
+#cesiumContainer{width:100%;height:100%;position:absolute;top:0;left:0}
+/* Map toolbar — positioned inside map-wrap */
+.map-toolbar{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:4px;z-index:100}
 .map-tile-btn{background:rgba(13,17,23,.9);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
 .map-tile-btn.active{background:var(--teal);color:#0D1117;border-color:var(--teal)}
-.map-label{position:absolute;top:8px;right:8px;background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono);color:var(--teal);z-index:10}
-/* Footprint marker */
-.footprint-info{position:absolute;bottom:8px;left:8px;background:rgba(13,17,23,.9);border:1px solid var(--teal);border-radius:4px;padding:5px 8px;font-size:10px;font-family:var(--mono);color:var(--text);z-index:10}
+.map-label{position:absolute;top:8px;right:8px;background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:10px;font-family:var(--mono);color:var(--teal);z-index:100}
+.footprint-info{position:absolute;bottom:16px;left:16px;background:rgba(13,17,23,.9);border:1px solid var(--teal);border-radius:4px;padding:5px 8px;font-size:10px;font-family:var(--mono);color:var(--text);z-index:100;pointer-events:none}
 .hud{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
 .hud-chip{background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--mono);font-size:10px;color:var(--teal)}
 .view-btns{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px}
@@ -97,9 +96,9 @@ canvas{width:100%!important;height:100%!important;display:block}
   <nav>
     <div class="brand"><div class="dot"></div>3DGS GeoViewer<span class="badge">v2.1</span></div>
     <div class="nav-tab-btns">
-      <div class="nav-tab-btn active" onclick="setViewPanel('3d',this)">🧊 3D Viewer</div>
+      <div class="nav-tab-btn" onclick="setViewPanel('3d',this)">🧊 3D Viewer</div>
       <div class="nav-tab-btn" onclick="setViewPanel('split',this)">⊟ Split</div>
-      <div class="nav-tab-btn" onclick="setViewPanel('map',this)">🗺 Basemap</div>
+      <div class="nav-tab-btn active" onclick="setViewPanel('map',this)">🗺 Basemap</div>
     </div>
     <div class="nav-coords">
       <span>EPSG:<b id="coordEpsg">Lokal</b></span>
@@ -196,7 +195,8 @@ canvas{width:100%!important;height:100%!important;display:block}
       <div class="map-label">EPSG:4326 · WGS84</div>
       <div class="footprint-info">
         📍 Geosite Stone Garden, Citatah<br>
-        <span style="color:var(--teal)">-6.8244535°, 107.4382284°</span>
+        <span style="color:var(--teal)">6.8244535°S, 107.4382284°E</span><br>
+        <span style="color:var(--muted)">UTM 48S: 769483 E, 9244976 N</span>
       </div>
     </div>
     <div class="info">
@@ -906,9 +906,9 @@ window.setViewPanel = function(mode, btn) {
   document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 
-  const mainEl   = document.querySelector('.main');
+  const mainEl    = document.querySelector('.main');
   const canvasWrap = document.getElementById('canvasWrap');
-  const mapWrap  = document.getElementById('mapWrap');
+  const mapWrap   = document.getElementById('mapWrap');
   const infoPanel = document.querySelector('.info');
 
   if (mode === '3d') {
@@ -930,7 +930,7 @@ window.setViewPanel = function(mode, btn) {
     initCesium();
   }
 
-  // Trigger resize
+  // Trigger resize Three.js
   setTimeout(() => {
     const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
     if (w > 0 && h > 0) {
@@ -940,6 +940,13 @@ window.setViewPanel = function(mode, btn) {
     }
   }, 50);
 };
+
+// ── Default landing page: Basemap ─────────────────────────────────────────
+// Langsung tampilkan basemap saat halaman pertama dibuka
+(function initDefaultView() {
+  const mapBtn = document.querySelector('.nav-tab-btn:last-child');
+  if (mapBtn) setViewPanel('map', mapBtn);
+})();
 </script>
 </body>
 </html>
