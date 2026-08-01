@@ -157,7 +157,7 @@ canvas{width:100%!important;height:100%!important;display:block}
       </div>
       <div>
         <div class="sec-label">Info Lokasi</div>
-        <div class="mrow"><span class="mk">Objek</span><span class="mv" id="infoObjek" style="font-size:10px">Tugu Muda</span></div>
+        <div class="mrow"><span class="mk">Objek</span><span class="mv" id="infoObjek" style="font-size:10px">Geosite Stone Garden</span></div>
         <div class="mrow"><span class="mk">Kota</span><span class="mv" id="infoKota" style="font-size:10px">Semarang</span></div>
         <div class="mrow"><span class="mk">Metode</span><span class="mv" id="infoMetode" style="font-size:10px">SfM-MVS</span></div>
         <div class="mrow"><span class="mk">Software</span><span class="mv" id="infoSoftware" style="font-size:10px">Agisoft Metashape</span></div>
@@ -195,26 +195,26 @@ canvas{width:100%!important;height:100%!important;display:block}
       </div>
       <div class="map-label">EPSG:4326 · WGS84</div>
       <div class="footprint-info">
-        📍 Tugu Temple, Semarang<br>
-        <span style="color:var(--teal)">-6.9804°, 110.3490°</span>
+        📍 Geosite Stone Garden, Citatah<br>
+        <span style="color:var(--teal)">-6.8244535°, 107.4382284°</span>
       </div>
     </div>
     <div class="info">
-      <div class="sec-label">Akurasi</div>
+      <div class="sec-label">Akurasi Georeferensi</div>
       <div class="stat-card">
         <div class="stat-label">CE90 Horizontal</div>
-        <div class="stat-val good" id="ce90val">2.74 <span class="stat-unit">mm</span></div>
-        <div class="bar-wrap"><div class="bar-fill" id="ce90bar" style="width:14%;background:#4ADE80"></div></div>
+        <div class="stat-val good" id="ce90val">2.54 <span class="stat-unit">cm</span></div>
+        <div class="bar-wrap"><div class="bar-fill" id="ce90bar" style="width:13%;background:#4ADE80"></div></div>
       </div>
       <div class="stat-card">
         <div class="stat-label">LE90 Vertikal</div>
-        <div class="stat-val warn" id="le90val">11.46 <span class="stat-unit">mm</span></div>
-        <div class="bar-wrap"><div class="bar-fill" id="le90bar" style="width:16%;background:#F97316"></div></div>
+        <div class="stat-val warn" id="le90val">— <span class="stat-unit"></span></div>
+        <div class="bar-wrap"><div class="bar-fill" id="le90bar" style="width:0%;background:#F97316"></div></div>
       </div>
       <div class="sec-label">RMSE</div>
       <div class="grid2">
-        <div class="cell"><div class="cell-label">RMSE H</div><div class="cell-val good" id="rmseH">1.81mm</div></div>
-        <div class="cell"><div class="cell-label">RMSE V</div><div class="cell-val warn" id="rmseV">6.95mm</div></div>
+        <div class="cell"><div class="cell-label">RMSE H</div><div class="cell-val good" id="rmseH">1.81 cm</div></div>
+        <div class="cell"><div class="cell-label">RMSE V</div><div class="cell-val warn" id="rmseV">1.44 cm</div></div>
       </div>
       <div class="sec-label">Jumlah Titik</div>
       <div class="stat-card">
@@ -247,48 +247,65 @@ const SPLAT_URLS = {
 const METHODS = {
   sfmmvs:{
     label:'SfM-MVS', desc:'Dense Mesh',
-    ce90:'2.74', le90:'11.46', rmseH:'1.81', rmseV:'6.95',
-    pipe:'SfM → COLMAP → Agisoft Metashape MVS',
+    ce90:'2.54', le90:'—', rmseH:'1.81', rmseV:'1.44',
+    pipe:'UAV → Agisoft Metashape (SfM + MVS)',
     colors:[0x2DD4BF,0x38BDF8,0x4ADE80],
     info:{
-      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
-      metode:'SfM-MVS (Structure from Motion)', software:'Agisoft Metashape Pro',
-      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
-      icp:'3 titik (Sokkia IM-52)', crs:'Lokal (Metashape)',
-      format:'PLY Binary (Dense Mesh)', titik:'6,534,772',
+      objek:'Geosite Stone Garden', kota:'Citatah, Kab. Bandung Barat',
+      metode:'SfM-MVS (Structure from Motion — Multi-View Stereo)',
+      software:'Agisoft Metashape Pro',
+      kamera:'DJI Mavic 3 Enterprise',
+      gcp:'5 titik GCP (Sokkia iM-52 ETS)',
+      icp:'3 titik ICP (CP02, G1CP01, G2CP02)',
+      crs:'WGS84 / UTM Zone 48S (EPSG:32748)',
+      format:'PLY Binary (Dense Mesh)',
+      titik:'6,534,772',
+      rmse3d:'—', rmseAlign:'—',
     },
-    ce90color:'#4ADE80', le90color:'#F97316', ce90pct:14, le90pct:16,
-    epsg:'Lokal', coordPrefix:['X','Y','Z'],
+    ce90color:'#4ADE80', le90color:'#F97316', ce90pct:13, le90pct:0,
+    epsg:'EPSG:32748', coordPrefix:['E','N','H'],
   },
   '3dgs':{
-    label:'3DGS Lokal', desc:'Gaussian Splatting',
-    ce90:'17.70', le90:'68.90', rmseH:'11.66', rmseV:'41.76',
-    pipe:'SfM → COLMAP → Postshot 3DGS Training',
+    label:'3DGS + Similarity', desc:'Kerbl + Transform',
+    ce90:'2.64', le90:'2.47', rmseH:'1.74', rmseV:'1.50',
+    pipe:'SfM → 3DGS (Kerbl 2023) → Similarity Transform (s·R·t)',
     colors:[0xF97316,0xFBBF24,0xF87171],
     info:{
-      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
-      metode:'3D Gaussian Splatting', software:'Jawset Postshot',
-      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
-      icp:'3 titik (Sokkia IM-52)', crs:'Koordinat Lokal',
-      format:'PLY Binary (Gaussian Splat)', titik:'3,285,986',
+      objek:'Geosite Stone Garden', kota:'Citatah, Kab. Bandung Barat',
+      metode:'3D Gaussian Splatting + Similarity Transform',
+      software:'3DGS (Kerbl et al. 2023)',
+      kamera:'DJI Mavic 3 Enterprise',
+      gcp:'5 titik GCP (Sokkia iM-52 ETS)',
+      icp:'3 titik ICP (CP02, G1CP01, G2CP02)',
+      crs:'WGS84 / UTM Zone 48S (EPSG:32748)',
+      format:'PLY Binary (Gaussian Splat)',
+      titik:'3,285,986',
+      rmse3d:'0.0230 m', rmseAlign:'0.0230 m',
+      transform:'s=0.99976, t=[982.10, 2177.39, -1919.80]',
     },
-    ce90color:'#F87171', le90color:'#F87171', ce90pct:89, le90pct:99,
-    epsg:'Lokal', coordPrefix:['X','Y','Z'],
+    ce90color:'#F97316', le90color:'#F97316', ce90pct:13, le90pct:4,
+    epsg:'EPSG:32748', coordPrefix:['E','N','H'],
   },
   geo3dgs:{
-    label:'Geo-3DGS', desc:'Georeferenced UTM 49S',
-    ce90:'17.70', le90:'68.90', rmseH:'11.66', rmseV:'41.76',
-    pipe:'GeoRefGS Training → Similarity Transform T → UTM 49S',
+    label:'GeoRefGS', desc:'Joint Georeferencing',
+    ce90:'25.53', le90:'2.47', rmseH:'16.83', rmseV:'1.50',
+    pipe:'SfM → GeoRefGS (Hou et al. 2026) — joint optimization',
     colors:[0x818CF8,0x38BDF8,0x2DD4BF],
     info:{
-      objek:'Tugu Muda Semarang', kota:'Semarang, Jawa Tengah',
-      metode:'Georeferenced 3DGS (GeoRefGS)', software:'GeoRefGS + Postshot',
-      kamera:'DJI Phantom 4', gcp:'4 titik (Topcon Hiper SR)',
-      icp:'3 titik (Sokkia IM-52)', crs:'WGS84 / UTM Zone 49S (EPSG:32749)',
-      format:'PLY Binary (Georef Gaussian Splat)', titik:'2,063,667',
+      objek:'Geosite Stone Garden', kota:'Citatah, Kab. Bandung Barat',
+      metode:'Georeferenced 3DGS (GeoRefGS — Hou et al. 2026)',
+      software:'GeoRefGS pipeline',
+      kamera:'DJI Mavic 3 Enterprise',
+      gcp:'5 titik GCP (CP01, CP03, CP04, G1CP02, G2CP01)',
+      icp:'3 titik ICP (CP02, G1CP01, G2CP02)',
+      crs:'WGS84 / UTM Zone 48S (EPSG:32748)',
+      format:'PLY Binary (Georef Gaussian Splat)',
+      titik:'2,063,667',
+      rmse3d:'0.1689 m', rmseAlign:'0.0230 m',
+      transform:'s=0.99976, t=[982.10, 2177.39, -1919.80]',
     },
-    ce90color:'#F97316', le90color:'#F87171', ce90pct:89, le90pct:99,
-    epsg:'EPSG:32749', coordPrefix:['E','N','H'],
+    ce90color:'#F87171', le90color:'#F97316', ce90pct:100, le90pct:4,
+    epsg:'EPSG:32748', coordPrefix:['E','N','H'],
   },
 };
 
@@ -427,7 +444,7 @@ window.loadSplat = async function(method) {
       // Fly basemap ke lokasi
       if (cesiumViewer) {
         cesiumViewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(110.3490, -6.9804, 400),
+          destination: Cesium.Cartesian3.fromDegrees(107.4382284, -6.8244535, 600),
           orientation: { heading:0, pitch: Cesium.Math.toRadians(-50), roll:0 },
           duration: 1.5,
         });
@@ -725,7 +742,7 @@ window.setMethod=function(method,el){
   // Fly basemap ke lokasi model
   if (cesiumViewer) {
     cesiumViewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(110.3490, -6.9804, 400),
+      destination: Cesium.Cartesian3.fromDegrees(107.4382284, -6.8244535, 600),
       orientation: { heading:0, pitch: Cesium.Math.toRadians(-50), roll:0 },
       duration: 1.5,
     });
@@ -775,21 +792,21 @@ function initCesium() {
     terrainProvider:    new Cesium.EllipsoidTerrainProvider(),
   });
 
-  // Fly to Tugu Temple, Semarang
-  const TUGU_LAT =  -6.9804;
-  const TUGU_LON = 110.3490;
-  const TUGU_H   =   37.995;
+  // Fly to Geosite Stone Garden, Citatah, Kab. Bandung Barat
+  const SITE_LAT = -6.8244535;
+  const SITE_LON = 107.4382284;
+  const SITE_H   = 800; // elevasi sekitar 800m dpl
 
   cesiumViewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(TUGU_LON, TUGU_LAT, 500),
+    destination: Cesium.Cartesian3.fromDegrees(SITE_LON, SITE_LAT, 800),
     orientation: { heading: 0, pitch: Cesium.Math.toRadians(-45), roll: 0 },
     duration: 2,
   });
 
-  // Tambah marker Tugu Temple
+  // Marker utama Stone Garden
   cesiumViewer.entities.add({
-    name: 'Tugu Temple',
-    position: Cesium.Cartesian3.fromDegrees(TUGU_LON, TUGU_LAT, TUGU_H),
+    name: 'Geosite Stone Garden',
+    position: Cesium.Cartesian3.fromDegrees(SITE_LON, SITE_LAT, SITE_H),
     billboard: {
       image: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -801,7 +818,7 @@ function initCesium() {
       verticalOrigin: Cesium.VerticalOrigin.CENTER,
     },
     label: {
-      text: 'Tugu Temple\nSemarang',
+      text: 'Geosite Stone Garden\nCitatah, Kab. Bandung Barat',
       font: '11px Space Grotesk',
       fillColor: Cesium.Color.fromCssColorString('#2DD4BF'),
       outlineColor: Cesium.Color.fromCssColorString('#0D1117'),
@@ -812,48 +829,49 @@ function initCesium() {
     },
   });
 
-  // Tambah footprint polygon area survey
+  // Footprint area survey (approx)
   cesiumViewer.entities.add({
     name: 'Survey Area',
     polygon: {
       hierarchy: Cesium.Cartesian3.fromDegreesArray([
-        110.3480, -6.9810,
-        110.3500, -6.9810,
-        110.3500, -6.9798,
-        110.3480, -6.9798,
+        107.4375, -6.8250,
+        107.4390, -6.8250,
+        107.4390, -6.8238,
+        107.4375, -6.8238,
       ]),
       material: Cesium.Color.fromCssColorString('#2DD4BF').withAlpha(0.15),
       outline: true,
       outlineColor: Cesium.Color.fromCssColorString('#2DD4BF'),
       outlineWidth: 2,
-      height: 0,
+      height: SITE_H,
     },
   });
 
-  // GCP markers
+  // GCP markers — CP01, CP03, CP04, G1CP02, G2CP01
   const gcps = [
-    { lon: 110.34820, lat: -6.98040, label: 'GCP-01' },
-    { lon: 110.34980, lat: -6.98040, label: 'GCP-02' },
-    { lon: 110.34980, lat: -6.98000, label: 'GCP-03' },
-    { lon: 110.34820, lat: -6.98000, label: 'GCP-04' },
+    { lon: 107.4378, lat: -6.8247, label: 'CP01' },
+    { lon: 107.4385, lat: -6.8247, label: 'CP03' },
+    { lon: 107.4385, lat: -6.8241, label: 'CP04' },
+    { lon: 107.4378, lat: -6.8241, label: 'G1CP02' },
+    { lon: 107.4382, lat: -6.8244, label: 'G2CP01' },
   ];
   gcps.forEach(gcp => {
     cesiumViewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(gcp.lon, gcp.lat, TUGU_H),
+      position: Cesium.Cartesian3.fromDegrees(gcp.lon, gcp.lat, SITE_H),
       point: { pixelSize: 10, color: Cesium.Color.fromCssColorString('#F97316'), outlineColor: Cesium.Color.WHITE, outlineWidth: 1 },
       label: { text: gcp.label, font: '10px monospace', fillColor: Cesium.Color.fromCssColorString('#F97316'), pixelOffset: new Cesium.Cartesian2(12, 0), scale: 0.8 },
     });
   });
 
-  // ICP markers
+  // ICP markers — CP02, G1CP01, G2CP02
   const icps = [
-    { lon: 110.34900, lat: -6.98010, label: 'ICP-01' },
-    { lon: 110.34840, lat: -6.98030, label: 'ICP-02' },
-    { lon: 110.34960, lat: -6.98030, label: 'ICP-03' },
+    { lon: 107.4380, lat: -6.8248, label: 'CP02' },
+    { lon: 107.4376, lat: -6.8243, label: 'G1CP01' },
+    { lon: 107.4388, lat: -6.8243, label: 'G2CP02' },
   ];
   icps.forEach(icp => {
     cesiumViewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(icp.lon, icp.lat, TUGU_H),
+      position: Cesium.Cartesian3.fromDegrees(icp.lon, icp.lat, SITE_H),
       point: { pixelSize: 8, color: Cesium.Color.fromCssColorString('#F87171'), outlineColor: Cesium.Color.WHITE, outlineWidth: 1 },
       label: { text: icp.label, font: '10px monospace', fillColor: Cesium.Color.fromCssColorString('#F87171'), pixelOffset: new Cesium.Cartesian2(12, 0), scale: 0.8 },
     });
