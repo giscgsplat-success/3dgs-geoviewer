@@ -188,10 +188,12 @@ canvas{width:100%!important;height:100%!important;display:block}
 <script type="module">
 import * as THREE from 'three';
 
+// ── URL file splat di Hugging Face ─────────────────────────────────────────
+const HF_BASE = 'https://huggingface.co/datasets/giscgsplat/3dgs-geoviewer-models/resolve/main';
 const SPLAT_URLS = {
-  sfmmvs:  '/model/splat_sfmmvs.ply',
-  '3dgs':  '/model/splat_3dgs.ply',
-  geo3dgs: '/model/splat_georefgs.ply',
+  sfmmvs:  HF_BASE + '/splat_sfmmvs.ply',
+  '3dgs':  HF_BASE + '/splat_3dgs.ply',
+  geo3dgs: HF_BASE + '/splat_georefgs.ply',
 };
 
 const METHODS = {
@@ -323,68 +325,130 @@ window.loadSplat = async function(method) {
   isLoading = false;
 };
 
-// ── Parser PLY sederhana → THREE.Points ───────────────────────────────────
+// ── Parser PLY → THREE.Points ────────────────────────────────────────────
 function parsePlyToPoints(buffer, method) {
-  const text = new TextDecoder().decode(buffer.slice(0, 2000));
-  const headerEnd = text.indexOf('end_header');
-  if(headerEnd === -1) { console.error('Bukan file PLY valid'); return null; }
+  try {
+    // Cari end_header di binary buffer langsung
+    const uint8 = new Uint8Array(buffer);
+    const endHeaderStr = 'end_header\n';
+    const endHeaderBytes = new TextEncoder().encode(endHeaderStr);
+    let headerByteLen = -1;
 
-  const header = text.substring(0, headerEnd);
-  const lines = header.split('\n');
-
-  // Hitung jumlah vertex
-  let nVertex = 0;
-  const propOrder = [];
-  for(const line of lines) {
-    if(line.startsWith('element vertex')) nVertex = parseInt(line.split(' ')[2]);
-    if(line.startsWith('property float')) propOrder.push(line.split(' ')[2]);
-  }
-
-  const headerBytes = new TextEncoder().encode(text.substring(0, headerEnd + 'end_header'.length + 1)).length;
-  const stride = propOrder.length * 4;
-  const data = new DataView(buffer, headerBytes);
-
-  const MAX_POINTS = Math.min(nVertex, 1000000); // max 1 juta titik untuk performa
-  const positions = new Float32Array(MAX_POINTS * 3);
-  const colors    = new Float32Array(MAX_POINTS * 3);
-
-  const xi = propOrder.indexOf('x');
-  const yi = propOrder.indexOf('y');
-  const zi = propOrder.indexOf('z');
-  const ri = propOrder.indexOf('f_dc_0');
-  const gi = propOrder.indexOf('f_dc_1');
-  const bi = propOrder.indexOf('f_dc_2');
-
-  const SH = 0.28209479177387814;
-  const step = Math.max(1, Math.floor(nVertex / MAX_POINTS));
-
-  let pi = 0;
-  for(let i=0; i<nVertex && pi<MAX_POINTS; i+=step) {
-    const off = i * stride;
-    positions[pi*3]   = data.getFloat32(off + xi*4, true);
-    positions[pi*3+1] = data.getFloat32(off + yi*4, true);
-    positions[pi*3+2] = data.getFloat32(off + zi*4, true);
-
-    if(ri >= 0) {
-      colors[pi*3]   = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + ri*4, true)));
-      colors[pi*3+1] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + gi*4, true)));
-      colors[pi*3+2] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + bi*4, true)));
-    } else {
-      const d = METHODS[method];
-      const c = d.colors[pi % d.colors.length];
-      colors[pi*3]   = ((c>>16)&255)/255;
-      colors[pi*3+1] = ((c>>8)&255)/255;
-      colors[pi*3+2] = (c&255)/255;
+    for (let i = 0; i < Math.min(uint8.length - endHeaderBytes.length, 4096); i++) {
+      let match = true;
+      for (let j = 0; j < endHeaderBytes.length; j++) {
+        if (uint8[i+j] !== endHeaderBytes[j]) { match = false; break; }
+      }
+      if (match) { headerByteLen = i + endHeaderBytes.length; break; }
     }
-    pi++;
+
+    // Coba juga dengan \r\n
+    if (headerByteLen === -1) {
+      const endHeaderStr2 = 'end_header\r\n';
+      const endHeaderBytes2 = new TextEncoder().encode(endHeaderStr2);
+      for (let i = 0; i < Math.min(uint8.length - endHeaderBytes2.length, 4096); i++) {
+        let match = true;
+        for (let j = 0; j < endHeaderBytes2.length; j++) {
+          if (uint8[i+j] !== endHeaderBytes2[j]) { match = false; break; }
+        }
+        if (match) { headerByteLen = i + endHeaderBytes2.length; break; }
+      }
+    }
+
+    if (headerByteLen === -1) {
+      console.error('end_header tidak ditemukan');
+      return null;
+    }
+
+    // Parse header text
+    const headerText = new TextDecoder().decode(buffer.slice(0, headerByteLen));
+    const lines = headerText.split(/\r?\n/);
+
+    let nVertex = 0;
+    const propOrder = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('element vertex')) nVertex = parseInt(trimmed.split(/\s+/)[2]);
+      if (trimmed.startsWith('property float')) propOrder.push(trimmed.split(/\s+/)[2]);
+      if (trimmed.startsWith('property double')) propOrder.push(trimmed.split(/\s+/)[2]);
+    }
+
+    console.log(`PLY: ${nVertex} vertex, ${propOrder.length} props, header ${headerByteLen} bytes`);
+    console.log('Props:', propOrder.join(', '));
+
+    if (nVertex === 0 || propOrder.length === 0) {
+      console.error('Header tidak valid');
+      return null;
+    }
+
+    const stride = propOrder.length * 4;
+    const dataStart = headerByteLen;
+
+    // Validasi ukuran buffer
+    const expectedSize = dataStart + nVertex * stride;
+    if (buffer.byteLength < expectedSize) {
+      console.warn(`Buffer ${buffer.byteLength} < expected ${expectedSize}, adjusting nVertex`);
+      nVertex = Math.floor((buffer.byteLength - dataStart) / stride);
+    }
+
+    const data = new DataView(buffer, dataStart);
+    const xi = propOrder.indexOf('x');
+    const yi = propOrder.indexOf('y');
+    const zi = propOrder.indexOf('z');
+    const ri = propOrder.indexOf('f_dc_0');
+    const gi = propOrder.indexOf('f_dc_1');
+    const bi = propOrder.indexOf('f_dc_2');
+    const rRed = propOrder.indexOf('red');
+
+    const MAX_PTS = Math.min(nVertex, 800000);
+    const step    = Math.max(1, Math.floor(nVertex / MAX_PTS));
+    const positions = new Float32Array(MAX_PTS * 3);
+    const colors    = new Float32Array(MAX_PTS * 3);
+    const SH = 0.28209479177387814;
+
+    let pi = 0;
+    for (let i = 0; i < nVertex && pi < MAX_PTS; i += step) {
+      const off = i * stride;
+      if (off + stride > data.byteLength) break;
+
+      positions[pi*3]   = data.getFloat32(off + xi*4, true);
+      positions[pi*3+1] = data.getFloat32(off + yi*4, true);
+      positions[pi*3+2] = data.getFloat32(off + zi*4, true);
+
+      if (ri >= 0) {
+        colors[pi*3]   = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + ri*4, true)));
+        colors[pi*3+1] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + gi*4, true)));
+        colors[pi*3+2] = Math.max(0, Math.min(1, 0.5 + SH * data.getFloat32(off + bi*4, true)));
+      } else if (rRed >= 0) {
+        // RGB uint8 stored as float — Agisoft format
+        const rv = data.getFloat32(off + rRed*4, true);
+        colors[pi*3]   = rv > 1 ? rv/255 : rv;
+        const gv = data.getFloat32(off + (rRed+1)*4, true);
+        colors[pi*3+1] = gv > 1 ? gv/255 : gv;
+        const bv = data.getFloat32(off + (rRed+2)*4, true);
+        colors[pi*3+2] = bv > 1 ? bv/255 : bv;
+      } else {
+        const d = METHODS[method];
+        const c = d.colors[pi % d.colors.length];
+        colors[pi*3]   = ((c>>16)&255)/255;
+        colors[pi*3+1] = ((c>>8)&255)/255;
+        colors[pi*3+2] = (c&255)/255;
+      }
+      pi++;
+    }
+
+    console.log(`Rendered ${pi.toLocaleString()} points`);
+    document.getElementById('hVerts').textContent = pi.toLocaleString() + ' titik (asli)';
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions.slice(0, pi*3), 3));
+    geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors.slice(0, pi*3),    3));
+    return new THREE.Points(geo, new THREE.PointsMaterial({size: .02, vertexColors: true, sizeAttenuation: true}));
+
+  } catch(err) {
+    console.error('parsePlyToPoints error:', err);
+    throw err;
   }
-
-  document.getElementById('hVerts').textContent = pi.toLocaleString() + ' titik (asli)';
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions.slice(0,pi*3), 3));
-  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors.slice(0,pi*3),    3));
-  return new THREE.Points(geo, new THREE.PointsMaterial({size:.02, vertexColors:true, sizeAttenuation:true}));
 }
 
 function fitCamera(obj) {
