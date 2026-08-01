@@ -276,16 +276,22 @@ scene.add(gcpGroup);scene.add(icpGroup);
 
 // ── Demo point cloud ───────────────────────────────────────────────────────
 let cloudObj=null;
+
+// Debug helper — ketik _dbg() di console setelah model load
 window._dbg = () => {
-  if(!cloudObj?.geometry) { console.log('cloudObj null'); return; }
+  if(!cloudObj?.geometry) { console.log('cloudObj belum ada'); return; }
   cloudObj.geometry.computeBoundingBox();
-  const bb = cloudObj.geometry.boundingBox;
+  const bb  = cloudObj.geometry.boundingBox;
   const pos = cloudObj.geometry.attributes.position;
-  console.log('BB min:', bb.min);
-  console.log('BB max:', bb.max);
+  console.log('=== DEBUG PLY ===');
   console.log('Points:', pos.count);
-  // Sample 5 posisi pertama
-  for(let i=0;i<5;i++) console.log(`pt[${i}]:`, pos.getX(i).toFixed(4), pos.getY(i).toFixed(4), pos.getZ(i).toFixed(4));
+  console.log('BB min:', bb.min.x.toFixed(3), bb.min.y.toFixed(3), bb.min.z.toFixed(3));
+  console.log('BB max:', bb.max.x.toFixed(3), bb.max.y.toFixed(3), bb.max.z.toFixed(3));
+  const cx=(bb.min.x+bb.max.x)/2, cy=(bb.min.y+bb.max.y)/2, cz=(bb.min.z+bb.max.z)/2;
+  console.log('Center:', cx.toFixed(3), cy.toFixed(3), cz.toFixed(3));
+  console.log('Size:', (bb.max.x-bb.min.x).toFixed(3), (bb.max.y-bb.min.y).toFixed(3), (bb.max.z-bb.min.z).toFixed(3));
+  console.log('Camera pos:', camera.position.x.toFixed(2), camera.position.y.toFixed(2), camera.position.z.toFixed(2));
+  for(let i=0;i<3;i++) console.log(`pt[${i}]:`, pos.getX(i).toFixed(4), pos.getY(i).toFixed(4), pos.getZ(i).toFixed(4));
 };
 function buildDemoCloud(method){
   if(cloudObj){scene.remove(cloudObj);cloudObj.geometry?.dispose();cloudObj=null;}
@@ -724,11 +730,7 @@ function initCesium() {
 
 // ── Basemap switcher ─────────────────────────────────────────────────────
 const BASEMAPS = {
-  osm: () => new Cesium.UrlTemplateImageryProvider({
-  url: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  credit: 'OpenStreetMap contributors',
-  maximumLevel: 19,
-}),
+  osm: () => new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' }),
   satellite: () => new Cesium.UrlTemplateImageryProvider({
     url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
     credit: 'Google Satellite',
